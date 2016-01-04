@@ -1,0 +1,4 @@
+include 'plugin'
+
+project(':plugin').name= 'republish-plugin'
+rootProject.name = 'republish-plugin-project'
