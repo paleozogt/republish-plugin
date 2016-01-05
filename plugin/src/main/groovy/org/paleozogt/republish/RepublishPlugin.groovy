@@ -38,12 +38,12 @@ class RepublishPlugin implements Plugin<Project> {
                         republish.configs.each { configuration ->
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
-                                if (!republish.groupIncludes.contains(artId.group)) return;
-                                if (republish.groupExcludes.contains(artId.group)) return;
+                                if (!republish.accept(artId.group)) return;
+                                logger.lifecycle("republishing {}", artId)
+
                                 def pomFile= getPomFromArtifact(project, art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
-                                logger.lifecycle("republishing {}", artId)
                                 def targetName= makeTargetName(artId.name)
                                 republishedTargets.push(targetName)
 
@@ -71,8 +71,8 @@ class RepublishPlugin implements Plugin<Project> {
                                 def aid= pomXml.artifactId[0].value()[0]
                                 def ver= pomXml.version[0].value()[0]
 
-                                if (!republish.groupIncludes.contains(artId.group)) return;
-                                if (republish.groupExcludes.contains(artId.group)) return;
+                                if (!republish.accept(gid)) return;
+                                logger.lifecycle("republishing {}:{}:{}", gid, aid, ver)
 
                                 fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
                                     def ext= FilenameUtils.getExtension(art.name)
@@ -139,4 +139,11 @@ class RepublishExtension {
     File[] paths= []
     String[] groupIncludes= []
     String[] groupExcludes= []
+
+    boolean accept(group) {
+        boolean accept= true;
+        accept= accept && (groupIncludes.length == 0 ? true : groupIncludes.contains(group))
+        accept= accept && (groupExcludes.length == 0 ? true : !groupExcludes.contains(group))
+        return accept
+    }
 }
