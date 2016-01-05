@@ -13,6 +13,7 @@ import org.gradle.maven.MavenPomArtifact
 
 class RepublishPlugin implements Plugin<Project> {
     Logger logger = LoggerFactory.getLogger(getClass())
+    def republishedTargets= []
 
     void apply(Project project) {
         project.extensions.create("republish", RepublishExtension)
@@ -40,6 +41,7 @@ class RepublishPlugin implements Plugin<Project> {
 
                                 logger.lifecycle("republishing {}", artId)
                                 def targetName= artId.name.split('-').collect { it.toLowerCase().capitalize() }.join('')
+                                republishedTargets.push(targetName)
 
                                 "$targetName"(MavenPublication) {
                                     groupId artId.group
@@ -56,6 +58,16 @@ class RepublishPlugin implements Plugin<Project> {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // convenience targets for each repo
+                    repositories.each { repo ->
+                        def repoSuffix= repo.name.capitalize() + 'Repository'
+                        def task= project.task("publishTo$repoSuffix")
+
+                        republishedTargets.each { targetName ->
+                            task.dependsOn("publish${targetName}PublicationTo${repoSuffix}")
                         }
                     }
                 }
