@@ -7,5 +7,18 @@ buildscript {
         classpath 'org.paleozogt:republish-plugin:0.0.1-SNAPSHOT'
     }
 }
+apply plugin: 'java'
 apply plugin: 'org.paleozogt.republish'
 
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile "commons-io:commons-io:2.4"
+}
+
+republish {
+    groupIncludes = ['commons-io', 'thingie']
+    configs = [ configurations.compile, configurations.runtime ]
+}
