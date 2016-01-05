@@ -39,7 +39,7 @@ publishing {
     }
 
     publications {
-        jar(MavenPublication) {
+        exampleJar(MavenPublication) {
             groupId "org.paleozogt"
             artifactId project.name
             version project.version
