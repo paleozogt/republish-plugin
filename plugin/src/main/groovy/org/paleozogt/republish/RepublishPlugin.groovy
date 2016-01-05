@@ -3,6 +3,8 @@ package org.paleozogt.republish
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import org.apache.commons.io.FilenameUtils
+
 import org.gradle.api.Project
 import org.gradle.api.Plugin
 import org.gradle.api.artifacts.Configuration
@@ -40,7 +42,7 @@ class RepublishPlugin implements Plugin<Project> {
                                 def pomXml= new XmlParser().parse(pomFile)
 
                                 logger.lifecycle("republishing {}", artId)
-                                def targetName= artId.name.split('-').collect { it.toLowerCase().capitalize() }.join('')
+                                def targetName= makeTargetName(artId.name)
                                 republishedTargets.push(targetName)
 
                                 "$targetName"(MavenPublication) {
@@ -55,6 +57,42 @@ class RepublishPlugin implements Plugin<Project> {
                                     // copy the pom
                                     pom.withXml {
                                         asNode().setValue(pomXml.value())
+                                    }
+                                }
+                            }
+                        }
+
+                        republish.paths.each { path ->
+                            fileTree(dir:path, include:'**/*.pom').each { pomFile ->
+                                def pomXml= new XmlParser().parse(pomFile)
+                                def gid= pomXml.groupId[0].value()[0]
+                                def aid= pomXml.artifactId[0].value()[0]
+                                def ver= pomXml.version[0].value()[0]
+
+                                fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
+                                    def ext= FilenameUtils.getExtension(art.name)
+
+                                    // the classifier (if any) is whatever's after the version in the filename
+                                    def cls= FilenameUtils.getBaseName(art.name).replace("$aid-$ver", '').replace('-', '')
+                                    if (cls.length() == 0) cls= null
+
+                                    logger.lifecycle("republishing {}:{}:{}", gid, aid, ver)
+                                    def targetName= makeTargetName(aid)
+                                    republishedTargets.push(targetName)
+
+                                    "$targetName"(MavenPublication) {
+                                        groupId gid
+                                        artifactId aid
+                                        version ver
+                                        artifact(art) {
+                                            classifier cls
+                                            extension ext
+                                        }
+
+                                        // copy the pom
+                                        pom.withXml {
+                                            asNode().setValue(pomXml.value())
+                                        }
                                     }
                                 }
                             }
@@ -76,6 +114,10 @@ class RepublishPlugin implements Plugin<Project> {
         }
     }
 
+    String makeTargetName(name) {
+        return name.split('-').collect { it.toLowerCase().capitalize() }.join('')
+    }
+
     File getPomFromArtifact(Project project, ResolvedArtifact artifact) {
         def component = project.dependencies.createArtifactResolutionQuery()
                                 .forComponents(artifact.id.componentIdentifier)
@@ -89,6 +131,7 @@ class RepublishPlugin implements Plugin<Project> {
 
 class RepublishExtension {
     Configuration[] configs= []
+    File[] paths= []
     String[] groupIncludes= []
     String[] groupExcludes= []
 }
