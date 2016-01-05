@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.gradle.api.Project
 import org.gradle.api.Plugin
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.maven.MavenModule
 import org.gradle.maven.MavenPomArtifact
@@ -13,66 +14,68 @@ import org.gradle.maven.MavenPomArtifact
 class RepublishPlugin implements Plugin<Project> {
     Logger logger = LoggerFactory.getLogger(getClass())
 
-    Configuration[] configs= []
-    String[] groupIncludes= []
-    String[] groupExcludes= []
-
     void apply(Project project) {
         project.extensions.create("republish", RepublishExtension)
-        project.configure(project) {
-            logger.lifecycle("configure")
+        project.afterEvaluate {
+            project.configure(project) {
+                if (republish.configs.length == 0) republish.configs= configurations.compile
+                logger.lifecycle("republishing configurations:{} groupIncludes:{}", republish.configs, republish.groupIncludes)
 
-            apply plugin: 'maven-publish'
-            publishing {
-                repositories {
-                    maven {
-                        name "buildDir"
-                        url "$buildDir/repo"
+                apply plugin: 'maven-publish'
+                publishing {
+                    repositories {
+                        maven {
+                            name "buildDir"
+                            url "$buildDir/repo"
+                        }
                     }
-                }
 
-                publications {
-                    [ configurations.compile ].each { configuration ->
-                        configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
-                            def artId= art.moduleVersion.id
-                            if (groupExcludes.contains(artId.group)) return;
+                    publications {
+                        republish.configs.each { configuration ->
+                            configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
+                                def artId= art.moduleVersion.id
+                                if (!republish.groupIncludes.contains(artId.group)) return;
+                                def pomFile= getPomFromArtifact(project, art)
+                                def pomXml= new XmlParser().parse(pomFile)
 
-                            logger.lifecycle("art {}", artId)
+                                logger.lifecycle("republishing {}", artId)
 
-                            // get the pom
-                            def component = project.dependencies.createArtifactResolutionQuery()
-                                                    .forComponents(art.id.componentIdentifier)
-                                                    .withArtifacts(MavenModule, MavenPomArtifact)
-                                                    .execute()
-                                                    .resolvedComponents[0]
-                            def pomFile= component.getArtifacts(MavenPomArtifact)[0].file
-                            def pomXml= new XmlParser().parse(pomFile)
+                                "$artId.name"(MavenPublication) {
+                                    groupId artId.group
+                                    artifactId artId.name
+                                    version artId.version
+                                    artifact(art.file) {
+                                        classifier art.classifier
+                                        extension art.extension
+                                    }
 
-                            "$artId.name"(MavenPublication) {
-                                groupId artId.group
-                                artifactId artId.name
-                                version artId.version
-                                artifact(art.file) {
-                                    classifier art.classifier
-                                    extension art.extension
-                                }
-
-                                // copy the pom
-                                pom.withXml {
-                                    asNode().setValue(pomXml.value())
+                                    // copy the pom
+                                    pom.withXml {
+                                        asNode().setValue(pomXml.value())
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
             }
         }
+    }
 
+    File getPomFromArtifact(Project project, ResolvedArtifact artifact) {
+        def component = project.dependencies.createArtifactResolutionQuery()
+                                .forComponents(artifact.id.componentIdentifier)
+                                .withArtifacts(MavenModule, MavenPomArtifact)
+                                .execute()
+                                .resolvedComponents[0]
+        def pomFile= component.getArtifacts(MavenPomArtifact)[0].file
+        return pomFile
     }
 }
 
 class RepublishExtension {
-    Configuration[] configs
-    String[] groupIncludes
-    String[] groupExcludes
+    Configuration[] configs= []
+    String[] groupIncludes= []
+    String[] groupExcludes= []
 }
