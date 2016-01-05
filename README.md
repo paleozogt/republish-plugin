@@ -78,3 +78,9 @@ republish {
     groupIncludes = [ 'org.apache.commons' ]    // only republish one set of dependencies
 }
 ```
+
+
+As [lagniappe](https://en.wikipedia.org/wiki/Lagniappe), the plugin also adds a maven repo that publishes into your build directory (```"$buildDir/m2repository"```) which you can invoke with the ```republishToBuildDirRepository``` target.
+It also added ```republishToXxxRepository``` targets for each of the ```maven { }``` repos defined.
+
+
