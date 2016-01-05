@@ -1,0 +1,11 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.paleozogt:republish-plugin:0.0.1-SNAPSHOT'
+    }
+}
+apply plugin: 'org.paleozogt.republish'
+
