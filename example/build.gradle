@@ -18,6 +18,35 @@ dependencies {
     compile "commons-io:commons-io:2.4"
 }
 
+apply plugin: 'maven-publish'
+publishing {
+    repositories {
+        maven {
+            name "remote"
+            credentials {
+                username project.hasProperty('REPO_USERNAME') ? "$REPO_USERNAME" : ""
+                password project.hasProperty('REPO_PASSWORD') ? "$REPO_PASSWORD" : ""
+            }
+            if (project.hasProperty('REPO_URL')) {
+                if (project.version.toString().endsWith('-SNAPSHOT')) {
+                    url "${REPO_URL}/repositories/snapshots"
+                } else {
+                    url "${REPO_URL}/repositories/releases"
+                }
+            }
+        }
+    }
+
+    publications {
+        jar(MavenPublication) {
+            groupId "org.paleozogt"
+            artifactId project.name
+            version project.version
+            from components.java
+        }
+    }
+}
+
 republish {
     groupIncludes = ['commons-io', 'thingie']
     configs = [ configurations.compile, configurations.runtime ]
