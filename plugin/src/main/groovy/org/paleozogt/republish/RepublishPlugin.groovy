@@ -64,7 +64,7 @@ class RepublishPlugin implements Plugin<Project> {
                     // convenience targets for each repo
                     repositories.each { repo ->
                         def repoSuffix= repo.name.capitalize() + 'Repository'
-                        def task= project.task("publishTo$repoSuffix")
+                        def task= project.task("republishTo$repoSuffix")
 
                         republishedTargets.each { targetName ->
                             task.dependsOn("publish${targetName}PublicationTo${repoSuffix}")
