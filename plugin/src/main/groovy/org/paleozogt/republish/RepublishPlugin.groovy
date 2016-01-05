@@ -22,7 +22,8 @@ class RepublishPlugin implements Plugin<Project> {
         project.afterEvaluate {
             project.configure(project) {
                 if (republish.configs.length == 0) republish.configs= configurations.compile
-                logger.lifecycle("republishing configurations:{} groupIncludes:{}", republish.configs, republish.groupIncludes)
+                logger.lifecycle("republishing configurations:{} paths:{} groupIncludes:{} groupExcludes:{}", 
+                                 republish.configs, republish.paths, republish.groupIncludes, republish.groupExcludes)
 
                 apply plugin: 'maven-publish'
                 publishing {
@@ -38,6 +39,7 @@ class RepublishPlugin implements Plugin<Project> {
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
                                 if (!republish.groupIncludes.contains(artId.group)) return;
+                                if (republish.groupExcludes.contains(artId.group)) return;
                                 def pomFile= getPomFromArtifact(project, art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
