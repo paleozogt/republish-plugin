@@ -7,6 +7,7 @@ import org.apache.commons.io.FilenameUtils
 
 import org.gradle.api.Project
 import org.gradle.api.Plugin
+import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.publish.maven.MavenPublication
@@ -14,33 +15,56 @@ import org.gradle.maven.MavenModule
 import org.gradle.maven.MavenPomArtifact
 
 class RepublishPlugin implements Plugin<Project> {
+    void apply(Project project) {
+        project.extensions.create("republish", RepublishExtension, project)
+    }
+}
+
+class RepublishExtension {
+    Project project
+
+    Configuration[] configs= []
+    File[] paths= []
+    String[] groupIncludes= []
+    String[] groupExcludes= []
+
     def republishedTargets= []
 
-    void apply(Project project) {
-        project.extensions.create("republish", RepublishExtension)
+    RepublishExtension(Project project) {
+        this.project= project
+    
+        project.configure(project) {
+            apply plugin: 'maven-publish'
+            publishing {
+                repositories {
+                    maven {
+                        name "buildDir"
+                        url "$buildDir/m2repository"
+                    }
+                }
+
+                // convenience targets for each repo
+                repositories.each { repo ->
+                    makeRepublishTask(repo)
+                }
+            }
+        }
+
         project.afterEvaluate {
             project.configure(project) {
-                if (republish.configs.length == 0) republish.configs= configurations.compile
+                if (configs.length == 0) configs= configurations.compile
                 logger.lifecycle("republishing configurations:{} paths:{} groupIncludes:{} groupExcludes:{}", 
-                                 republish.configs, republish.paths, republish.groupIncludes, republish.groupExcludes)
+                                 configs, paths, groupIncludes, groupExcludes)
 
-                apply plugin: 'maven-publish'
                 publishing {
-                    repositories {
-                        maven {
-                            name "buildDir"
-                            url "$buildDir/m2repository"
-                        }
-                    }
-
                     publications {
-                        republish.configs.each { configuration ->
+                        configs.each { configuration ->
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
-                                if (!republish.accept(artId.group)) return;
+                                if (!accept(artId.group)) return;
                                 logger.lifecycle("republishing {}", artId)
 
-                                def pomFile= getPomFromArtifact(project, art)
+                                def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
                                 def targetName= makeTargetName(artId.name)
@@ -63,14 +87,14 @@ class RepublishPlugin implements Plugin<Project> {
                             }
                         }
 
-                        republish.paths.each { path ->
+                        paths.each { path ->
                             fileTree(dir:path, include:'**/*.pom').each { pomFile ->
                                 def pomXml= new XmlParser().parse(pomFile)
                                 def gid= pomXml.groupId[0].value()[0]
                                 def aid= pomXml.artifactId[0].value()[0]
                                 def ver= pomXml.version[0].value()[0]
 
-                                if (!republish.accept(gid)) return;
+                                if (!accept(gid)) return;
                                 logger.lifecycle("republishing {}:{}:{}", gid, aid, ver)
 
                                 fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
@@ -105,8 +129,8 @@ class RepublishPlugin implements Plugin<Project> {
 
                     // convenience targets for each repo
                     repositories.each { repo ->
-                        def repoSuffix= repo.name.capitalize() + 'Repository'
-                        def task= project.task("republishTo$repoSuffix")
+                        def repoSuffix= makeRepoSuffix(repo)
+                        def task= makeRepublishTask(repo)
 
                         republishedTargets.each { targetName ->
                             task.dependsOn("publish${targetName}PublicationTo${repoSuffix}")
@@ -115,29 +139,8 @@ class RepublishPlugin implements Plugin<Project> {
                 }
 
             }
-        }
+        }   
     }
-
-    String makeTargetName(name) {
-        return name.tokenize('-_').collect { it.toLowerCase().capitalize() }.join('')
-    }
-
-    File getPomFromArtifact(Project project, ResolvedArtifact artifact) {
-        def component = project.dependencies.createArtifactResolutionQuery()
-                                .forComponents(artifact.id.componentIdentifier)
-                                .withArtifacts(MavenModule, MavenPomArtifact)
-                                .execute()
-                                .resolvedComponents[0]
-        def pomFile= component.getArtifacts(MavenPomArtifact)[0].file
-        return pomFile
-    }
-}
-
-class RepublishExtension {
-    Configuration[] configs= []
-    File[] paths= []
-    String[] groupIncludes= []
-    String[] groupExcludes= []
 
     boolean accept(group) {
         boolean accept= true;
@@ -145,4 +148,31 @@ class RepublishExtension {
         accept= accept && (groupExcludes.length == 0 ? true : !groupExcludes.contains(group))
         return accept
     }
+    
+    String makeTargetName(name) {
+        return name.tokenize('-_').collect { it.toLowerCase().capitalize() }.join('')
+    }
+    
+    String makeRepoSuffix(repo) {
+        return repo.name.capitalize() + 'Repository'
+    }
+
+    Task makeRepublishTask(repo) {
+        def taskName= "republishTo${makeRepoSuffix(repo)}"
+        def task= project.tasks.findByPath(taskName)
+        if (task == null) {
+            task= project.task(taskName)
+        }
+        return task
+    }
+
+    File getPomFromArtifact(ResolvedArtifact artifact) {
+        def component = project.dependencies.createArtifactResolutionQuery()
+                                .forComponents(artifact.id.componentIdentifier)
+                                .withArtifacts(MavenModule, MavenPomArtifact)
+                                .execute()
+                                .resolvedComponents[0]
+        def pomFile= component.getArtifacts(MavenPomArtifact)[0].file
+        return pomFile
+    }    
 }
