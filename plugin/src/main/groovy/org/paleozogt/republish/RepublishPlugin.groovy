@@ -52,7 +52,7 @@ class RepublishExtension {
 
         project.afterEvaluate {
             project.configure(project) {
-                if (configs.length == 0) configs= configurations.compile
+                if (configs.length == 0) configs= configurations.findByName('compile')
                 logger.lifecycle("republishing configurations:{} paths:{} groupIncludes:{} groupExcludes:{}", 
                                  configs, paths, groupIncludes, groupExcludes)
 
