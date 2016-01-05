@@ -27,7 +27,7 @@ class RepublishPlugin implements Plugin<Project> {
                     repositories {
                         maven {
                             name "buildDir"
-                            url "$buildDir/repo"
+                            url "$buildDir/m2repository"
                         }
                     }
 
