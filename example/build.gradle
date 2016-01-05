@@ -16,6 +16,7 @@ repositories {
 
 dependencies {
     compile "commons-io:commons-io:2.4"
+    compile 'org.apache.commons:commons-lang3:3.3.2'
 }
 
 apply plugin: 'maven-publish'
@@ -48,6 +49,5 @@ publishing {
 }
 
 republish {
-    groupIncludes = ['commons-io', 'thingie']
-    configs = [ configurations.compile, configurations.runtime ]
+    groupIncludes = [ 'org.apache.commons' ]
 }
