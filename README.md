@@ -19,7 +19,6 @@ buildscript {
     }
 }
 apply plugin: 'java'
-apply plugin: 'org.paleozogt.republish'
 
 repositories {
     jcenter()
@@ -50,6 +49,7 @@ publishing {
     }
 }
 
+apply plugin: 'org.paleozogt.republish'
 republish {
     configs = [ configurations.compile ]        // pull from compile dependencies (default)
     groupIncludes = [ 'org.apache.commons' ]    // only republish one set of dependencies
@@ -57,7 +57,7 @@ republish {
 ```
 
 
-Another scenario is when you have an on-disk folder of artifacts and POMs and want to republish those somewhere else.
+Another scenario is when you have an on-disk folder of artifacts-and-POMs that you want to republish those somewhere else.
 
 
 ```
@@ -70,7 +70,6 @@ buildscript {
         classpath 'org.paleozogt:republish-plugin:0.0.10'
     }
 }
-apply plugin: 'java'
 apply plugin: 'org.paleozogt.republish'
 
 republish {
