@@ -39,8 +39,9 @@ class RepublishPlugin implements Plugin<Project> {
                                 def pomXml= new XmlParser().parse(pomFile)
 
                                 logger.lifecycle("republishing {}", artId)
+                                def targetName= artId.name.split('-').collect { it.toLowerCase().capitalize() }.join('')
 
-                                "$artId.name"(MavenPublication) {
+                                "$targetName"(MavenPublication) {
                                     groupId artId.group
                                     artifactId artId.name
                                     version artId.version
