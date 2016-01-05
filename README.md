@@ -57,7 +57,7 @@ republish {
 ```
 
 
-Another scenario is when you have a on-disk folder of artifacts and POMs and want to republish those somewhere else.
+Another scenario is when you have an on-disk folder of artifacts and POMs and want to republish those somewhere else.
 
 
 ```
