@@ -14,7 +14,6 @@ import org.gradle.maven.MavenModule
 import org.gradle.maven.MavenPomArtifact
 
 class RepublishPlugin implements Plugin<Project> {
-    Logger logger = LoggerFactory.getLogger(getClass())
     def republishedTargets= []
 
     void apply(Project project) {
