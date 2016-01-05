@@ -71,6 +71,9 @@ class RepublishPlugin implements Plugin<Project> {
                                 def aid= pomXml.artifactId[0].value()[0]
                                 def ver= pomXml.version[0].value()[0]
 
+                                if (!republish.groupIncludes.contains(artId.group)) return;
+                                if (republish.groupExcludes.contains(artId.group)) return;
+
                                 fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
                                     def ext= FilenameUtils.getExtension(art.name)
 
