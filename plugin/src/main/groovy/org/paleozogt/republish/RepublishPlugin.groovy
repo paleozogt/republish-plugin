@@ -115,7 +115,7 @@ class RepublishPlugin implements Plugin<Project> {
     }
 
     String makeTargetName(name) {
-        return name.split('-').collect { it.toLowerCase().capitalize() }.join('')
+        return name.tokenize('-_').collect { it.toLowerCase().capitalize() }.join('')
     }
 
     File getPomFromArtifact(Project project, ResolvedArtifact artifact) {
