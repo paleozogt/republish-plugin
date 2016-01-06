@@ -15,7 +15,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'org.paleozogt:republish-plugin:0.0.10'
+        classpath 'org.paleozogt:republish-plugin:0.0.11'
     }
 }
 apply plugin: 'java'
@@ -67,7 +67,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'org.paleozogt:republish-plugin:0.0.10'
+        classpath 'org.paleozogt:republish-plugin:0.0.11'
     }
 }
 apply plugin: 'org.paleozogt.republish'
