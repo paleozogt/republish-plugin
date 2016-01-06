@@ -95,16 +95,12 @@ class RepublishExtension {
                                 def ver= pomXml.version[0].value()[0]
 
                                 if (!accept(gid)) return;
-                                logger.lifecycle("republishing {}:{}:{}", gid, aid, ver)
 
                                 fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
                                     def ext= FilenameUtils.getExtension(art.name)
+                                    def cls= getClassifier(aid, ver, art.name)
 
-                                    // the classifier (if any) is whatever's after the version in the filename
-                                    def cls= FilenameUtils.getBaseName(art.name).replace("$aid-$ver", '').replace('-', '')
-                                    if (cls.length() == 0) cls= null
-
-                                    logger.lifecycle("republishing {}:{}:{}", gid, aid, ver)
+                                    logger.lifecycle("republishing {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
                                     def targetName= makeTargetName(aid)
                                     republishedTargets.push(targetName)
 
@@ -174,5 +170,17 @@ class RepublishExtension {
                                 .resolvedComponents[0]
         def pomFile= component.getArtifacts(MavenPomArtifact)[0].file
         return pomFile
-    }    
+    }
+
+    String getClassifier(aid, ver, name) {
+        def baseName= FilenameUtils.getBaseName(name)
+        def plainName= "$aid-$ver"
+        if (baseName == plainName) {
+            return null
+        } else {
+            // the classifier (if any) is whatever's after the version in the baseName
+            def cls= baseName.replace("$plainName-", '')
+            return cls
+        }
+    }
 }
