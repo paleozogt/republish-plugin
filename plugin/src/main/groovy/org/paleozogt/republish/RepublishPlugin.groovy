@@ -79,7 +79,7 @@ class RepublishExtension {
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
                                 if (!accept(artId.group)) return;
-                                logger.lifecycle("republishing {}", artId)
+                                logger.lifecycle("found {}", artId)
 
                                 def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
@@ -117,7 +117,7 @@ class RepublishExtension {
                                     def ext= FilenameUtils.getExtension(art.name)
                                     def cls= getClassifier(aid, ver, art.name)
 
-                                    logger.lifecycle("republishing {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
+                                    logger.lifecycle("found {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
                                     def targetName= makeTargetName(aid)
                                     republishedTargets.push(targetName)
 
