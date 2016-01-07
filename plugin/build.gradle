@@ -51,6 +51,16 @@ signing {
     sign configurations.archives
 }
 
+jar {
+    manifest {
+        attributes(
+            "Implementation-Title": project.name,
+            "Implementation-Version": project.version,
+            "Implementation-Vendor": project.group,
+        )
+    }
+}
+
 uploadArchives {
     repositories {
         mavenDeployer {
