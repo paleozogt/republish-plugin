@@ -51,6 +51,8 @@ signing {
     sign configurations.archives
 }
 
+sourceCompatibility= '1.7'
+targetCompatibility= '1.7'
 jar {
     manifest {
         attributes(
