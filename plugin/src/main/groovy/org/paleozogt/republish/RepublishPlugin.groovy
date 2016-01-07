@@ -60,7 +60,7 @@ class RepublishExtension {
                                  configs, paths, groupIncludes, groupExcludes)
 
                 if (scriptPath != null) {
-                    project.task(type:Wrapper, 'deployRepublishScript') {
+                    project.task(type:Wrapper, 'generateRepublishScript') {
                         jarFile new File(scriptPath, jarFile.getAbsolutePath().replace(project.projectDir.getAbsolutePath(), ''))
                         scriptFile new File(scriptPath, scriptFile.getAbsolutePath().replace(project.projectDir.getAbsolutePath(), ''))
 
