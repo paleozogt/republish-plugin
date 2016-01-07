@@ -8,6 +8,7 @@ import org.apache.commons.io.FilenameUtils
 import org.gradle.api.Project
 import org.gradle.api.Plugin
 import org.gradle.api.Task
+import org.gradle.api.tasks.wrapper.Wrapper
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.publish.maven.MavenPublication
@@ -21,18 +22,20 @@ class RepublishPlugin implements Plugin<Project> {
 }
 
 class RepublishExtension {
-    Project project
+    private Project project
 
     Configuration[] configs= []
     File[] paths= []
     String[] groupIncludes= []
     String[] groupExcludes= []
+    File scriptPath
 
     def republishedTargets= []
 
     RepublishExtension(Project project) {
         this.project= project
-    
+        def scriptText= this.class.getResourceAsStream("/republish.gradle").text
+
         project.configure(project) {
             apply plugin: 'maven-publish'
             publishing {
@@ -55,6 +58,20 @@ class RepublishExtension {
                 if (configs.length == 0) configs= configurations.findByName('compile')
                 logger.lifecycle("republishing configurations:{} paths:{} groupIncludes:{} groupExcludes:{}", 
                                  configs, paths, groupIncludes, groupExcludes)
+
+                if (scriptPath != null) {
+                    project.task(type:Wrapper, 'deployRepublishScript') {
+                        jarFile new File(scriptPath, jarFile.getAbsolutePath().replace(project.projectDir.getAbsolutePath(), ''))
+                        scriptFile new File(scriptPath, scriptFile.getAbsolutePath().replace(project.projectDir.getAbsolutePath(), ''))
+
+                        doFirst {
+                            scriptPath.mkdirs()
+                        }
+                        doLast {
+                            new File("$scriptPath/build.gradle").text= scriptText
+                        }
+                    }
+                }
 
                 publishing {
                     publications {

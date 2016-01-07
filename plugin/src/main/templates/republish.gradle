@@ -1,0 +1,42 @@
+/**
+ * This script takes artifacts+poms on disk and publishes them to a maven repo (like Nexus).
+ *
+ * To run this script:
+ *    ./gradlew publish -Pusername=myusername -Ppassword=mypassword -PrepoUrl=http://myrepo.com/nexus/content -Pm2repo=/path/to/m2repository
+ *
+ **/
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.paleozogt:republish-plugin:${VERSION}'
+    }
+}
+
+if (!project.hasProperty('m2repo')) {
+    ext.m2repo= projectDir
+}
+
+if (!project.hasProperty('username') || !project.hasProperty('password') || !project.hasProperty('repoUrl') || !project.hasProperty('m2repo')) {
+    throw new RuntimeException('Missing properties.  Please run like this:\\n./gradlew publish -Pusername=myusername -Ppassword=mypassword -PrepoUrl=http://myrepo.com/nexus/content -Pm2repo=/path/to/m2repository')
+}
+
+apply plugin: 'maven-publish'
+publishing {
+    repositories {
+        maven {
+            credentials {
+                username project.username
+                password project.password
+            }
+            url "\${project.repoUrl}/repositories/thirdparty"
+        }
+    }
+}
+
+apply plugin: 'org.paleozogt.republish'
+republish {
+    paths = [ project.m2repo ]
+}

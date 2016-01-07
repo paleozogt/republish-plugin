@@ -61,6 +61,23 @@ jar {
     }
 }
 
+ext.extraResources= file("$buildDir/tmp/resources")
+
+sourceSets {
+    main {
+        resources {
+            srcDirs+= extraResources
+        }
+    }
+}
+
+task deployRepublishScript(type:Copy) {
+    from file("src/main/templates")
+    into extraResources
+    expand(VERSION:project.version)
+}
+compileJava.dependsOn(deployRepublishScript)
+
 uploadArchives {
     repositories {
         mavenDeployer {
