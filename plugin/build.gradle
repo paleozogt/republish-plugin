@@ -1,9 +1,22 @@
+buildscript {
+    repositories {
+        maven {
+          url "https://plugins.gradle.org/m2/"
+        }
+        jcenter()
+    }
+    dependencies {
+        classpath "com.gradle.publish:plugin-publish-plugin:0.9.2"
+    }
+}
+
 apply plugin: 'groovy'
 apply plugin: 'signing'
 apply plugin: 'maven'
+apply plugin: "com.gradle.plugin-publish"
 
 repositories {
-    mavenCentral()
+    jcenter()
 }
 
 dependencies {
@@ -114,6 +127,20 @@ uploadArchives {
                     }
                 }
             }
+        }
+    }
+}
+
+pluginBundle {
+    website = "$PROJECT_URL"
+    vcsUrl = "$SCM_URL"
+    description = "$DESCRIPTION"
+    tags = ['maven', 'publish', 'artifacts']
+
+    plugins {
+        republishPlugin {
+            id = 'org.paleozogt.republish'
+            displayName = "$DISPLAY_NAME"
         }
     }
 }
