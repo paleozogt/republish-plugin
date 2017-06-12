@@ -4,6 +4,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import org.apache.commons.io.FilenameUtils
+import org.apache.commons.lang3.StringUtils
 
 import org.gradle.api.Project
 import org.gradle.api.Plugin
@@ -79,7 +80,8 @@ class RepublishExtension {
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
                                 if (!accept(artId.group)) return;
-                                logger.lifecycle("found {}", artId)
+                                logger.debug("republishing group='{}' id='{}' version='{}' classifier='{}' extension='{}'",
+                                             artId.group, artId.name, artId.version, art.classifier, art.extension)
 
                                 def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
@@ -92,8 +94,8 @@ class RepublishExtension {
                                     artifactId artId.name
                                     version artId.version
                                     artifact(art.file) {
-                                        classifier art.classifier
-                                        extension art.extension
+                                        classifier StringUtils.isEmpty(art.classifier) ? null : art.classifier
+                                        extension  StringUtils.isEmpty(art.extension)  ? null : art.extension
                                     }
 
                                     // copy the pom
