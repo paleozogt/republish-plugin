@@ -80,13 +80,13 @@ class RepublishExtension {
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
                                 def artId= art.moduleVersion.id
                                 if (!accept(artId.group)) return;
-                                logger.debug("republishing group='{}' id='{}' version='{}' classifier='{}' extension='{}'",
-                                             artId.group, artId.name, artId.version, art.classifier, art.extension)
+                                logger.debug("republishing config={} group='{}' id='{}' version='{}' classifier='{}' extension='{}'",
+                                             configuration.name, artId.group, artId.name, artId.version, art.classifier, art.extension)
 
                                 def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
-                                def targetName= makeTargetName(artId.group, artId.name)
+                                def targetName= makeTargetName(artId.group, artId.name, artId.version)
                                 republishedTargets.push(targetName)
 
                                 "$targetName"(MavenPublication) {
@@ -120,7 +120,7 @@ class RepublishExtension {
                                     def cls= getClassifier(aid, ver, art.name)
 
                                     logger.lifecycle("found {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
-                                    def targetName= makeTargetName(gid, aid)
+                                    def targetName= makeTargetName(gid, aid, ver)
                                     republishedTargets.push(targetName)
 
                                     "$targetName"(MavenPublication) {
@@ -164,13 +164,14 @@ class RepublishExtension {
         return accept
     }
     
-    String makeTargetName(group, name) {
+    String makeTargetName(group, name, ver) {
         return convertToCamelCase(group) +
-                convertToCamelCase(name)
+                convertToCamelCase(name) +
+                convertToCamelCase(ver)
     }
 
     String convertToCamelCase(str) {
-        return str.tokenize('.-_').collect { it.toLowerCase().capitalize() }.join('')
+        return str.tokenize('.+-_').collect { it.toLowerCase().capitalize() }.join('')
     }
 
     String makeRepoSuffix(repo) {
