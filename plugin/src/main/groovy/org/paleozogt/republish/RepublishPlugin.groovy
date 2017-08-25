@@ -86,7 +86,7 @@ class RepublishExtension {
                                 def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
-                                def targetName= makeTargetName(artId.name)
+                                def targetName= makeTargetName(artId.group, artId.name)
                                 republishedTargets.push(targetName)
 
                                 "$targetName"(MavenPublication) {
@@ -120,7 +120,7 @@ class RepublishExtension {
                                     def cls= getClassifier(aid, ver, art.name)
 
                                     logger.lifecycle("found {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
-                                    def targetName= makeTargetName(aid)
+                                    def targetName= makeTargetName(gid, aid)
                                     republishedTargets.push(targetName)
 
                                     "$targetName"(MavenPublication) {
@@ -164,10 +164,15 @@ class RepublishExtension {
         return accept
     }
     
-    String makeTargetName(name) {
-        return name.tokenize('-_').collect { it.toLowerCase().capitalize() }.join('')
+    String makeTargetName(group, name) {
+        return convertToCamelCase(group) +
+                convertToCamelCase(name)
     }
-    
+
+    String convertToCamelCase(str) {
+        return str.tokenize('.-_').collect { it.toLowerCase().capitalize() }.join('')
+    }
+
     String makeRepoSuffix(repo) {
         return repo.name.capitalize() + 'Repository'
     }
