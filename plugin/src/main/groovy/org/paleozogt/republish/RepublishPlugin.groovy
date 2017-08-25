@@ -1,8 +1,5 @@
 package org.paleozogt.republish
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 
@@ -22,6 +19,27 @@ class RepublishPlugin implements Plugin<Project> {
     }
 }
 
+class ArtifactCoords {
+    ArtifactCoords(group, name, version, classifier, extension) {
+        this.group= group
+        this.name= name
+        this.version= version
+        this.classifier= StringUtils.isEmpty(classifier) ? null : classifier
+        this.extension = StringUtils.isEmpty(extension)  ? null : extension
+    }
+
+    String toString() {
+        [group,
+         name,
+         version,
+         StringUtils.isEmpty(classifier)?"":classifier,
+         StringUtils.isEmpty(extension)?"":extension
+        ].join(':')
+    }
+
+    String group, name, version, classifier, extension
+}
+
 class RepublishExtension {
     private Project project
 
@@ -31,7 +49,7 @@ class RepublishExtension {
     String[] groupExcludes= []
     File scriptPath
 
-    def republishedTargets= []
+    def republishedArtifacts = [:]
 
     RepublishExtension(Project project) {
         this.project= project
@@ -78,24 +96,27 @@ class RepublishExtension {
                     publications {
                         configs.each { configuration ->
                             configuration.resolvedConfiguration.resolvedArtifacts.each { art ->
-                                def artId= art.moduleVersion.id
-                                if (!accept(artId.group)) return;
-                                logger.debug("republishing config={} group='{}' id='{}' version='{}' classifier='{}' extension='{}'",
-                                             configuration.name, artId.group, artId.name, artId.version, art.classifier, art.extension)
+                                def coords= new ArtifactCoords(art.moduleVersion.id.group, art.moduleVersion.id.name, art.moduleVersion.id.version,
+                                                               art.classifier, art.extension)
+                                if (!accept(coords.group)) return;
+                                logger.debug("republishing config={} coordinates={}", configuration.name, coords)
 
                                 def pomFile= getPomFromArtifact(art)
                                 def pomXml= new XmlParser().parse(pomFile)
 
-                                def targetName= makeTargetName(artId.group, artId.name, artId.version)
-                                republishedTargets.push(targetName)
+                                def targetName= markAsPublished(coords)
+                                if (targetName == null) {
+                                    logger.debug("ignoring dupe {}", coords)
+                                    return
+                                }
 
                                 "$targetName"(MavenPublication) {
-                                    groupId artId.group
-                                    artifactId artId.name
-                                    version artId.version
+                                    groupId coords.group
+                                    artifactId coords.name
+                                    version coords.version
                                     artifact(art.file) {
-                                        classifier StringUtils.isEmpty(art.classifier) ? null : art.classifier
-                                        extension  StringUtils.isEmpty(art.extension)  ? null : art.extension
+                                        classifier coords.classifier
+                                        extension  coords.extension
                                     }
 
                                     // copy the pom
@@ -108,28 +129,31 @@ class RepublishExtension {
 
                         paths.each { path ->
                             fileTree(dir:path, include:'**/*.pom').each { pomFile ->
+                                logger.debug("found pom {}", pomFile)
                                 def pomXml= new XmlParser().parse(pomFile)
-                                def gid= pomXml.groupId[0].value()[0]
-                                def aid= pomXml.artifactId[0].value()[0]
+                                def group= pomXml.groupId[0].value()[0]
+                                def name= pomXml.artifactId[0].value()[0]
                                 def ver= pomXml.version[0].value()[0]
+                                if (!accept(group)) return;
 
-                                if (!accept(gid)) return;
+                                fileTree(dir:pomFile.parentFile, include:"**/${name}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
+                                    def coords= new ArtifactCoords(group, name, ver,
+                                                                   getClassifier(name, ver, art.name), FilenameUtils.getExtension(art.name))
+                                    logger.lifecycle("republishing file={}: {}", art, coords)
 
-                                fileTree(dir:path, include:"**/${aid}*", excludes:['**/*.pom', '**/*.md5', '**/*.sha1']).each { art ->
-                                    def ext= FilenameUtils.getExtension(art.name)
-                                    def cls= getClassifier(aid, ver, art.name)
-
-                                    logger.lifecycle("found {}{}{}{}{}", "$gid", ":$aid", ":$ver", cls==null?"":":$cls", "@$ext")
-                                    def targetName= makeTargetName(gid, aid, ver)
-                                    republishedTargets.push(targetName)
+                                    def targetName= markAsPublished(coords)
+                                    if (targetName == null) {
+                                        logger.debug("ignoring dupe {}", coords)
+                                        return
+                                    }
 
                                     "$targetName"(MavenPublication) {
-                                        groupId gid
-                                        artifactId aid
-                                        version ver
+                                        groupId coords.group
+                                        artifactId coords.name
+                                        version coords.version
                                         artifact(art) {
-                                            classifier cls
-                                            extension ext
+                                            classifier coords.classifier
+                                            extension coords.extension
                                         }
 
                                         // copy the pom
@@ -147,7 +171,7 @@ class RepublishExtension {
                         def repoSuffix= makeRepoSuffix(repo)
                         def task= makeRepublishTask(repo)
 
-                        republishedTargets.each { targetName ->
+                        republishedArtifacts.each { targetName, artifacts ->
                             task.dependsOn("publish${targetName}PublicationTo${repoSuffix}")
                         }
                     }
@@ -157,28 +181,37 @@ class RepublishExtension {
         }   
     }
 
-    boolean accept(group) {
+    protected boolean accept(group) {
         boolean accept= true;
         accept= accept && (groupIncludes.length == 0 ? true : groupIncludes.contains(group))
         accept= accept && (groupExcludes.length == 0 ? true : !groupExcludes.contains(group))
         return accept
     }
-    
-    String makeTargetName(group, name, ver) {
-        return convertToCamelCase(group) +
-                convertToCamelCase(name) +
-                convertToCamelCase(ver)
+
+    protected String markAsPublished(ArtifactCoords coords) {
+        String targetName= makePublishingTargetName(coords)
+        if (!republishedArtifacts.containsKey(targetName)) republishedArtifacts[targetName]= []
+
+        if (republishedArtifacts[targetName].contains(coords.toString())) return null
+        republishedArtifacts[targetName].add(coords.toString())
+        return targetName
     }
 
-    String convertToCamelCase(str) {
+    protected static String makePublishingTargetName(ArtifactCoords coords) {
+        return convertToCamelCase(coords.group) +
+                convertToCamelCase(coords.name) +
+                convertToCamelCase(coords.version)
+    }
+
+    static String convertToCamelCase(str) {
         return str.tokenize('.+-_').collect { it.toLowerCase().capitalize() }.join('')
     }
 
-    String makeRepoSuffix(repo) {
+    static String makeRepoSuffix(repo) {
         return repo.name.capitalize() + 'Repository'
     }
 
-    Task makeRepublishTask(repo) {
+    protected Task makeRepublishTask(repo) {
         def taskName= "republishTo${makeRepoSuffix(repo)}"
         def task= project.tasks.findByPath(taskName)
         if (task == null) {
@@ -197,7 +230,7 @@ class RepublishExtension {
         return pomFile
     }
 
-    String getClassifier(aid, ver, name) {
+    protected static String getClassifier(aid, ver, name) {
         def baseName= FilenameUtils.getBaseName(name)
         def plainName= "$aid-$ver"
         if (baseName == plainName) {
