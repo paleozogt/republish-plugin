@@ -172,7 +172,9 @@ class RepublishExtension {
                         def task= makeRepublishTask(repo)
 
                         republishedArtifacts.each { targetName, artifacts ->
-                            task.dependsOn("publish${targetName}PublicationTo${repoSuffix}")
+                            def taskName= "publish${targetName}PublicationTo${repoSuffix}"
+                            logger.debug("making convenience task {}", taskName)
+                            task.dependsOn(taskName)
                         }
                     }
                 }
